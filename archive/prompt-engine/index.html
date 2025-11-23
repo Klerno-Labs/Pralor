@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Personal Prompt Engine</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="heading">
+        <p class="eyebrow">Prompt Engineering Toolkit</p>
+        <h1>Personal Prompt Engine</h1>
+        <p class="subhead">Turn your idea into a precise, copy-paste-ready AI prompt.</p>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="card input-section">
+        <div class="section-title">
+          <span class="step">1</span>
+          <div>
+            <h2>Describe what you want</h2>
+            <p class="hint">Be specific about the goal, constraints, and what "done" looks like.</p>
+          </div>
+        </div>
+
+        <label for="idea">Your idea, goal, or problem</label>
+        <textarea id="idea" name="idea" spellcheck="false" placeholder="I want an AI to help me design and build a landing page for my XRP liquidity dashboard with sections for hero, features, pricing, and FAQ."></textarea>
+
+        <div class="row">
+          <div class="field">
+            <label for="mode">Primary task type</label>
+            <select id="mode" name="mode">
+              <option value="dev">Development / Code</option>
+              <option value="product">Product / Strategy</option>
+              <option value="business">Business / Marketing</option>
+              <option value="creative">Creative / Content</option>
+              <option value="ops">Automation / Ops</option>
+              <option value="misc">Mixed / Not sure</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="tone">Tone</label>
+            <select id="tone" name="tone">
+              <option value="direct">Direct &amp; no-BS</option>
+              <option value="formal">Formal &amp; professional</option>
+              <option value="friendly">Friendly &amp; helpful</option>
+              <option value="aggressive">Aggressive &amp; optimization-focused</option>
+            </select>
+          </div>
+        </div>
+
+        <button id="generateBtn" type="button">Generate Prompt</button>
+      </section>
+
+      <section class="card output-section">
+        <div class="section-title">
+          <span class="step">2</span>
+          <div>
+            <h2>Copy your engineered prompt</h2>
+            <p class="hint">Paste this into ChatGPT, Claude, Gemini, or your AI coding agent.</p>
+          </div>
+        </div>
+
+        <textarea id="output" name="output" readonly spellcheck="false" placeholder="Your generated prompt will appear here..."></textarea>
+
+        <div class="output-actions">
+          <button id="copyBtn" type="button">Copy to Clipboard</button>
+          <span id="copyStatus" class="copy-status" aria-live="polite"></span>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>Built as a lightweight, offline prompt-engineering tool. Drop into VS Code and customize as you like.</p>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

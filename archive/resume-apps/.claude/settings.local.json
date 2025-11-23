@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(cat:*)",
+      "Bash(npm install)",
+      "Bash(npm run dev:*)",
+      "Bash(del /s /q .nextcache 2)",
+      "Bash(nul)",
+      "Bash(tree:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)",
+      "Bash(taskkill:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(tasklist /FI 'IMAGENAME eq node.exe' 2)",
+      "Bash(del \"c:\\Users\\Somli\\OneDrive\\Desktop\\resume apps\\web3-intelligence-hub\\lib\\api\\openai.ts\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

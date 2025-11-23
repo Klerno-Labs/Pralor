@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-import { getAnalytics } from 'firebase/analytics';
+import { getAnalytics, isSupported as analyticsIsSupported } from 'firebase/analytics';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -19,6 +19,19 @@ const app = initializeApp(firebaseConfig);
 // Initialize services
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
+
+// Analytics guarded for environments without IndexedDB (tests/SSR)
+let analyticsInstance = null;
+if (typeof window !== 'undefined') {
+  analyticsIsSupported()
+    .then((supported) => {
+      if (supported) analyticsInstance = getAnalytics(app);
+    })
+    .catch(() => {
+      // ignore analytics init errors in unsupported environments
+    });
+}
+
+export const analytics = analyticsInstance;
 
 export default app;

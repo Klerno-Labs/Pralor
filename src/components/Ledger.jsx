@@ -13,7 +13,8 @@ import {
   BarChart3,
   Loader2
 } from 'lucide-react';
-import { oracle } from '../ai/gemini';
+import { oracle } from '../services/gemini';
+import { useAuth } from '../context/AuthContext';
 
 // CoinGecko API (free, no key required)
 const COINGECKO_API = 'https://api.coingecko.com/api/v3';
@@ -271,24 +272,30 @@ const Ledger = ({ onNavigate }) => {
   const [analyzingToken, setAnalyzingToken] = useState(null);
   const [analysis, setAnalysis] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [error, setError] = useState('');
+  const { canUseFeature } = useAuth();
 
   const loadData = async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
     else setLoading(true);
+    try {
+      const [tokenData, global, fng] = await Promise.all([
+        fetchTopTokens(),
+        fetchGlobalData(),
+        fetchFearGreedIndex()
+      ]);
 
-    const [tokenData, global, fng] = await Promise.all([
-      fetchTopTokens(),
-      fetchGlobalData(),
-      fetchFearGreedIndex()
-    ]);
-
-    if (tokenData) setTokens(tokenData);
-    if (global) setGlobalData(global);
-    if (fng) setFearGreed(fng);
-
-    setLastUpdate(new Date());
-    setLoading(false);
-    setRefreshing(false);
+      if (tokenData) setTokens(tokenData);
+      if (global) setGlobalData(global);
+      if (fng) setFearGreed(fng);
+      setError('');
+      setLastUpdate(new Date());
+    } catch (err) {
+      setError('Failed to load market data. Please retry.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
   useEffect(() => {
@@ -298,6 +305,10 @@ const Ledger = ({ onNavigate }) => {
   }, []);
 
   const handleAnalyze = async (token) => {
+    if (!canUseFeature('ledgerFull')) {
+      setError('Upgrade required: full Ledger analytics available on paid tiers.');
+      return;
+    }
     setAnalyzingToken(token);
     setAnalysis(null);
 
@@ -352,6 +363,11 @@ const Ledger = ({ onNavigate }) => {
       </header>
 
       <main className="p-6">
+        {error && (
+          <div className="mb-4 bg-red-900/30 border border-red-500/30 text-sm text-red-200 rounded-lg px-3 py-2">
+            {error}
+          </div>
+        )}
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-pralor-purple" />

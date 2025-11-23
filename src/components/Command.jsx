@@ -23,6 +23,8 @@ import {
   Code,
   Zap
 } from 'lucide-react';
+import { savePrompt } from '../services/firestore';
+import { useAuth } from '../context/AuthContext';
 
 // Block Types
 const BLOCK_TYPES = {
@@ -181,20 +183,8 @@ const PromptBlock = ({ block, onUpdate, onDelete, onMoveUp, onMoveDown, isFirst,
   );
 };
 
-const PromptPreview = ({ blocks }) => {
+const PromptPreview = ({ prompt }) => {
   const [copied, setCopied] = useState(false);
-
-  const generatePrompt = () => {
-    return blocks
-      .filter(b => b.content.trim())
-      .map(b => {
-        const config = BLOCK_TYPES[b.type];
-        return `## ${config.name}\n${b.content}`;
-      })
-      .join('\n\n');
-  };
-
-  const prompt = generatePrompt();
 
   const handleCopy = () => {
     navigator.clipboard.writeText(prompt);
@@ -238,10 +228,10 @@ const PromptPreview = ({ blocks }) => {
       </div>
 
       <div className="flex-1 p-4 overflow-auto">
-        {prompt ? (
-          <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">
-            {prompt}
-          </pre>
+          {prompt ? (
+            <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">
+              {prompt}
+            </pre>
         ) : (
           <div className="h-full flex flex-col items-center justify-center text-gray-500">
             <Layers className="w-12 h-12 mb-3 opacity-50" />
@@ -318,6 +308,21 @@ const PromptTemplates = ({ onLoadTemplate }) => {
 const Command = ({ onNavigate }) => {
   const [blocks, setBlocks] = useState([]);
   const [savedPrompts, setSavedPrompts] = useState([]);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const { user, canUseFeature, recordUsage } = useAuth();
+
+  const buildPrompt = () => {
+    return blocks
+      .filter((b) => b.content.trim())
+      .map((b) => {
+        const config = BLOCK_TYPES[b.type];
+        return `## ${config.name}\n${b.content}`;
+      })
+      .join('\n\n');
+  };
+
+  const promptText = buildPrompt();
 
   const addBlock = (type) => {
     const newBlock = {
@@ -357,6 +362,28 @@ const Command = ({ onNavigate }) => {
     }
   };
 
+  const handleSave = async () => {
+    if (!user) {
+      setError('Sign in to save prompts.');
+      return;
+    }
+    if (!canUseFeature('commandSave')) {
+      setError('Upgrade required: free tier save limit reached.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const { error: saveError } = await savePrompt(user.uid, { blocks, prompt: promptText });
+      if (saveError) throw new Error(saveError);
+      await recordUsage('commandSaves');
+    } catch (err) {
+      setError(err.message || 'Failed to save prompt.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-pralor-void text-white">
       {/* Header */}
@@ -387,9 +414,13 @@ const Command = ({ onNavigate }) => {
             >
               Clear All
             </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-pralor-void border border-gray-700 rounded-lg text-sm hover:border-pralor-purple transition-colors">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-2 px-4 py-2 bg-pralor-void border border-gray-700 rounded-lg text-sm hover:border-pralor-purple transition-colors disabled:opacity-60"
+            >
               <Save className="w-4 h-4" />
-              Save
+              {saving ? 'Saving...' : 'Save'}
             </button>
             <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pralor-purple to-pralor-cyan text-white font-semibold rounded-lg text-sm hover:opacity-90 transition-opacity">
               <Play className="w-4 h-4" />
@@ -401,6 +432,11 @@ const Command = ({ onNavigate }) => {
 
       {/* Main Content */}
       <main className="p-6">
+        {error && (
+          <div className="mb-3 text-red-300 text-xs bg-red-900/40 border border-red-500/30 rounded-lg p-2">
+            {error}
+          </div>
+        )}
         <div className="grid grid-cols-12 gap-6 h-[calc(100vh-120px)]">
           {/* Left Sidebar - Block Palette */}
           <div className="col-span-3 space-y-4 overflow-auto">
@@ -445,7 +481,7 @@ const Command = ({ onNavigate }) => {
 
           {/* Right - Preview */}
           <div className="col-span-4">
-            <PromptPreview blocks={blocks} />
+            <PromptPreview prompt={promptText} />
           </div>
         </div>
       </main>

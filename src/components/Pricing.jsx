@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft,
@@ -13,21 +13,20 @@ import {
   ExternalLink,
   Loader2
 } from 'lucide-react';
+import { loadStripe } from '@stripe/stripe-js';
 
-// Stripe configuration - Replace with your actual Stripe price IDs
-const STRIPE_CONFIG = {
-  publishableKey: 'pk_test_YOUR_STRIPE_PUBLISHABLE_KEY',
-  prices: {
-    operator: {
-      monthly: 'price_operator_monthly_id',
-      yearly: 'price_operator_yearly_id'
-    },
-    architect: {
-      monthly: 'price_architect_monthly_id',
-      yearly: 'price_architect_yearly_id'
-    }
+const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
+const priceIds = {
+  operator: {
+    monthly: import.meta.env.VITE_STRIPE_PRICE_OPERATOR_MONTHLY || '',
+    yearly: import.meta.env.VITE_STRIPE_PRICE_OPERATOR_YEARLY || ''
+  },
+  architect: {
+    monthly: import.meta.env.VITE_STRIPE_PRICE_ARCHITECT_MONTHLY || '',
+    yearly: import.meta.env.VITE_STRIPE_PRICE_ARCHITECT_YEARLY || ''
   }
 };
+const portalUrl = import.meta.env.VITE_STRIPE_CUSTOMER_PORTAL_URL || '';
 
 const PLANS = [
   {
@@ -181,8 +180,12 @@ const PlanCard = ({ plan, isYearly, onSubscribe, isLoading }) => {
 const Pricing = ({ onNavigate }) => {
   const [isYearly, setIsYearly] = useState(false);
   const [isLoading, setIsLoading] = useState(null);
-  const [showCheckout, setShowCheckout] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState(null);
+  const [error, setError] = useState('');
+
+  const stripePromise = useMemo(() => {
+    if (!publishableKey) return null;
+    return loadStripe(publishableKey);
+  }, []);
 
   const handleSubscribe = async (planId, yearly) => {
     if (planId === 'initiate') {
@@ -191,35 +194,38 @@ const Pricing = ({ onNavigate }) => {
       return;
     }
 
-    if (planId === 'architect') {
-      // Enterprise tier - show contact form or redirect
+    if (planId === 'architect' && !priceIds.architect.monthly && !priceIds.architect.yearly) {
+      // Enterprise tier fallback
       window.open('mailto:sales@pralor.com?subject=ARCHITECT%20Tier%20Inquiry', '_blank');
       return;
     }
 
-    // For paid tiers, initiate Stripe checkout
+    const priceId = yearly ? priceIds[planId]?.yearly : priceIds[planId]?.monthly;
+    if (!publishableKey || !priceId) {
+      setError('Stripe is not configured. Add publishable key and price IDs to .env.');
+      return;
+    }
+
     setIsLoading(planId);
-    setSelectedPlan({ id: planId, yearly });
+    setError('');
 
-    // Simulate Stripe checkout initialization
-    // In production, you would call your backend to create a Checkout Session
-    setTimeout(() => {
+    try {
+      const stripe = await stripePromise;
+      if (!stripe) throw new Error('Stripe failed to load.');
+
+      const { error: stripeError } = await stripe.redirectToCheckout({
+        lineItems: [{ price: priceId, quantity: 1 }],
+        mode: 'subscription',
+        successUrl: `${window.location.origin}?checkout=success`,
+        cancelUrl: `${window.location.origin}?checkout=cancelled`
+      });
+
+      if (stripeError) throw new Error(stripeError.message);
+    } catch (err) {
+      setError(err.message || 'Unable to start checkout.');
+    } finally {
       setIsLoading(null);
-      setShowCheckout(true);
-    }, 1000);
-  };
-
-  const initiateStripeCheckout = async () => {
-    // In production, this would call your backend API
-    // POST /api/create-checkout-session
-    // Body: { priceId: STRIPE_CONFIG.prices[selectedPlan.id][selectedPlan.yearly ? 'yearly' : 'monthly'] }
-
-    // The backend would create a Stripe Checkout Session and return the URL
-    // Then redirect: window.location.href = session.url
-
-    console.log('Initiating Stripe checkout for:', selectedPlan);
-    alert('Stripe checkout would open here.\n\nTo enable payments:\n1. Add your Stripe publishable key\n2. Create products/prices in Stripe Dashboard\n3. Set up a backend endpoint to create Checkout Sessions');
-    setShowCheckout(false);
+    }
   };
 
   return (
@@ -258,6 +264,12 @@ const Pricing = ({ onNavigate }) => {
             Scale your operations with the right level of access. All plans include a 14-day free trial.
           </p>
 
+          {error && (
+            <div className="max-w-xl mx-auto mb-6 bg-red-900/40 border border-red-500/40 text-red-200 text-sm px-4 py-3 rounded">
+              {error}
+            </div>
+          )}
+
           {/* Billing Toggle */}
           <div className="inline-flex items-center gap-4 p-1 bg-white/5 rounded-full">
             <button
@@ -277,6 +289,16 @@ const Pricing = ({ onNavigate }) => {
               Yearly <span className="text-[#00FFD1]">-17%</span>
             </button>
           </div>
+
+          {portalUrl && (
+            <button
+              onClick={() => window.open(portalUrl, '_blank')}
+              className="mt-3 inline-flex items-center gap-2 text-sm text-[#00FFD1] hover:text-white transition-colors"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Manage billing in Stripe
+            </button>
+          )}
         </div>
 
         {/* Plans Grid */}
@@ -344,57 +366,6 @@ const Pricing = ({ onNavigate }) => {
         </div>
       </main>
 
-      {/* Checkout Modal */}
-      {showCheckout && selectedPlan && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-[#0A0A0A] border border-gray-800 rounded-lg p-8 max-w-md w-full"
-          >
-            <h3 className="text-xl font-bold mb-4">Complete Your Subscription</h3>
-            <p className="text-gray-400 mb-6">
-              You're subscribing to the <span className="text-[#9D00FF] font-semibold">
-                {PLANS.find(p => p.id === selectedPlan.id)?.name}
-              </span> plan ({selectedPlan.yearly ? 'yearly' : 'monthly'}).
-            </p>
-
-            <div className="bg-white/5 rounded-lg p-4 mb-6">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Total</span>
-                <span className="text-2xl font-bold">
-                  ${selectedPlan.yearly
-                    ? PLANS.find(p => p.id === selectedPlan.id)?.yearlyPrice
-                    : PLANS.find(p => p.id === selectedPlan.id)?.monthlyPrice}
-                  <span className="text-sm text-gray-500">
-                    /{selectedPlan.yearly ? 'year' : 'month'}
-                  </span>
-                </span>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <button
-                onClick={() => setShowCheckout(false)}
-                className="flex-1 py-3 border border-gray-700 rounded-lg hover:bg-white/5 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={initiateStripeCheckout}
-                className="flex-1 py-3 bg-[#9D00FF] rounded-lg hover:bg-[#8000D0] transition-colors flex items-center justify-center gap-2"
-              >
-                <CreditCard className="w-4 h-4" />
-                Pay with Stripe
-              </button>
-            </div>
-
-            <p className="text-xs text-gray-500 text-center mt-4">
-              You'll be redirected to Stripe's secure checkout
-            </p>
-          </motion.div>
-        </div>
-      )}
     </div>
   );
 };

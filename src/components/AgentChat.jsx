@@ -13,7 +13,7 @@ import {
   Minimize2,
   Sparkles
 } from 'lucide-react';
-import { chat, architect, oracle, sentry } from '../ai/gemini';
+import { chat, architect, oracle, sentry } from '../services/gemini';
 
 const AGENTS = {
   architect: {

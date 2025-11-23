@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { onAuthChange, getUserData } from '../firebase/auth';
+import { onAuthChange, getUserData } from '../services/auth';
+import { incrementUsage } from '../services/firestore';
 
 const AuthContext = createContext(null);
 
@@ -40,6 +41,13 @@ export const AuthProvider = ({ children }) => {
       const { data } = await getUserData(user.uid);
       setUserData(data);
     }
+  };
+
+  // Record usage for rate-limited features
+  const recordUsage = async (field) => {
+    if (!user) return;
+    await incrementUsage(user.uid, field);
+    await refreshUserData();
   };
 
   // Check if user can use a feature based on their tier
@@ -104,7 +112,8 @@ export const AuthProvider = ({ children }) => {
     tier: userData?.tier || 'initiate',
     refreshUserData,
     canUseFeature,
-    getRemainingUsage
+    getRemainingUsage,
+    recordUsage
   };
 
   return (

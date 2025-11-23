@@ -11,7 +11,8 @@ import {
   where,
   orderBy,
   limit,
-  serverTimestamp
+  serverTimestamp,
+  increment
 } from 'firebase/firestore';
 import { db } from './config';
 
@@ -45,15 +46,10 @@ export const updateUserTier = async (uid, tier) => {
 export const incrementUsage = async (uid, field) => {
   try {
     const userRef = doc(db, 'users', uid);
-    const userDoc = await getDoc(userRef);
-
-    if (userDoc.exists()) {
-      const currentUsage = userDoc.data().usage || {};
-      await updateDoc(userRef, {
-        [`usage.${field}`]: (currentUsage[field] || 0) + 1,
-        updatedAt: serverTimestamp()
-      });
-    }
+    await updateDoc(userRef, {
+      [`usage.${field}`]: increment(1),
+      updatedAt: serverTimestamp()
+    });
     return { error: null };
   } catch (error) {
     return { error: error.message };
@@ -73,6 +69,7 @@ export const savePrompt = async (uid, promptData) => {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
+    await incrementUsage(uid, 'commandSaves');
     return { id: docRef.id, error: null };
   } catch (error) {
     return { id: null, error: error.message };

@@ -20,7 +20,7 @@ import {
   Terminal
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { logOut } from '../firebase/auth';
+import { logOut } from '../services/auth';
 import AgentChat from './AgentChat';
 
 // Simulated real-time data

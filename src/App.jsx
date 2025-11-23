@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { AuthProvider } from './context/AuthContext';
-import PralorLanding from './components/PralorLanding';
-import SentryDashboard from './components/SentryDashboard';
-import Construct from './components/Construct';
-import Ledger from './components/Ledger';
-import Command from './components/Command';
-import Pricing from './components/Pricing';
 import AuthModal from './components/AuthModal';
+
+const PralorLanding = lazy(() => import('./components/PralorLanding'));
+const SentryDashboard = lazy(() => import('./components/SentryDashboard'));
+const Construct = lazy(() => import('./components/Construct'));
+const Ledger = lazy(() => import('./components/Ledger'));
+const Command = lazy(() => import('./components/Command'));
+const Pricing = lazy(() => import('./components/Pricing'));
 
 function AppContent() {
   // Navigation State: 'landing', 'sentry', 'construct', 'ledger', 'command', 'pricing'
@@ -45,7 +46,18 @@ function AppContent() {
 
   return (
     <div className="antialiased">
-      {renderView()}
+      <Suspense
+        fallback={
+          <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center">
+            <div className="text-center space-y-3">
+              <div className="animate-spin h-10 w-10 border-2 border-pralor-purple border-t-transparent rounded-full mx-auto" />
+              <p className="text-gray-400 text-sm tracking-wide">Loading PRALOR interface...</p>
+            </div>
+          </div>
+        }
+      >
+        {renderView()}
+      </Suspense>
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}

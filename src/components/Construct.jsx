@@ -18,7 +18,9 @@ import {
   Check,
   AlertCircle
 } from 'lucide-react';
-import { construct as constructAI } from '../ai/gemini';
+import { construct as constructAI } from '../services/gemini';
+import { saveConstruct } from '../services/firestore';
+import { useAuth } from '../context/AuthContext';
 
 // AI-powered business generation
 const generateBusiness = async (idea, industry = 'technology') => {
@@ -159,7 +161,7 @@ const IdeaInput = ({ onSubmit }) => {
         </div>
 
         <button
-          onClick={() => onSubmit(idea)}
+          onClick={() => onSubmit(idea, industry)}
           disabled={!idea.trim()}
           className="w-full py-4 bg-gradient-to-r from-pralor-purple to-pralor-cyan text-white font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
         >
@@ -348,14 +350,30 @@ const Construct = ({ onNavigate }) => {
   const [step, setStep] = useState(0);
   const [idea, setIdea] = useState('');
   const [business, setBusiness] = useState(null);
+  const [error, setError] = useState('');
+  const { user, canUseFeature, recordUsage, getRemainingUsage, tier } = useAuth();
 
-  const handleSubmit = async (submittedIdea) => {
+  const handleSubmit = async (submittedIdea, submittedIndustry = '') => {
+    if (!canUseFeature('construct')) {
+      setError('Upgrade required: free tier Construct limit reached.');
+      return;
+    }
+    setError('');
     setIdea(submittedIdea);
     setStep(1);
 
-    const result = await generateBusiness(submittedIdea);
-    setBusiness(result);
-    setStep(2);
+    try {
+      const result = await generateBusiness(submittedIdea, submittedIndustry);
+      setBusiness(result);
+      setStep(2);
+      if (user) {
+        await saveConstruct(user.uid, { idea: submittedIdea, industry: submittedIndustry, output: result });
+        await recordUsage('constructGenerations');
+      }
+    } catch (err) {
+      setError('Failed to generate. Please try again.');
+      setStep(0);
+    }
   };
 
   const handleReset = () => {
@@ -388,7 +406,9 @@ const Construct = ({ onNavigate }) => {
           </div>
 
           <div className="text-sm text-gray-400">
-            <span className="text-pralor-cyan">3</span> generations remaining this month
+            {tier === 'initiate'
+              ? <><span className="text-pralor-cyan">{getRemainingUsage('construct')}</span> generations remaining this month</>
+              : 'Unlimited generations'}
           </div>
         </div>
       </header>
@@ -402,6 +422,19 @@ const Construct = ({ onNavigate }) => {
           {step === 1 && <Processing key="processing" idea={idea} />}
           {step === 2 && business && <Results key="results" business={business} onReset={handleReset} />}
         </AnimatePresence>
+
+        {error && (
+          <div className="mt-6 flex items-center gap-2 bg-red-900/30 border border-red-500/30 text-sm text-red-200 rounded-lg px-3 py-2">
+            <AlertCircle className="w-4 h-4" />
+            {error}
+          </div>
+        )}
+
+        {tier === 'initiate' && (
+          <p className="text-xs text-gray-500 mt-4">
+            Remaining this month: {getRemainingUsage('construct')}
+          </p>
+        )}
       </main>
     </div>
   );

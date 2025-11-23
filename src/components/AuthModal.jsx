@@ -11,7 +11,7 @@ import {
   AlertCircle,
   CheckCircle
 } from 'lucide-react';
-import { signUp, signIn, signInWithGoogle, resetPassword } from '../firebase/auth';
+import { signUp, signIn, signInWithGoogle, resetPassword } from '../services/auth';
 
 const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
   const [mode, setMode] = useState(initialMode); // 'login', 'signup', 'reset'

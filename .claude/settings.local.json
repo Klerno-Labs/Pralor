@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /s \"c:\\Users\\Somli\\OneDrive\\Desktop\\pralor corp\\src\")",
+      "Bash(npm run build:*)",
+      "Bash(npm install:*)",
+      "Bash(powershell -Command \"Get-ChildItem -Recurse -Force | Select-Object FullName, PSIsContainer | ConvertTo-Json\")",
+      "Bash(del GeminiLanding.jsx GeminiMainframe.jsx GeminiCommand.jsx PralorMainframe.jsx PralorCommand.jsx 2)",
+      "Bash(nul)",
+      "Bash(powershell -Command:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

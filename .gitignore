@@ -1,4 +1,4 @@
-node_modules
+node_modules/
 
 # Local env files
 .env
@@ -26,3 +26,6 @@ yarn-error.log*
 # Ignore Windows-reserved filename entries that break indexing
 **/nul
 archive/**/nul
+
+# Archive helper
+.archive/
